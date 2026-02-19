@@ -6,6 +6,8 @@ services:
     volumes:
       - ./backend:/app
     working_dir: /app
+    environment:
+      - PYTHONPATH=/app
 
   frontend:
     image: node:20-alpine
