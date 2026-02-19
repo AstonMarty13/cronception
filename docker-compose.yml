@@ -5,6 +5,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./data:/app/data
     working_dir: /app
     environment:
       - PYTHONPATH=/app

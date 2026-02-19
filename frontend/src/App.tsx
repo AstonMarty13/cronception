@@ -1,26 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import { Card, CardContent } from "@/components/ui/card";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "@/pages/Home";
+import Timeline from "@/pages/Timeline";
+import Heatmap from "@/pages/Heatmap";
+import Calendar from "@/pages/Calendar";
 
 export default function App() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["health"],
-    queryFn: async () => (await axios.get("/api/health")).data,
-  });
-
   return (
-    <div className="min-h-screen p-6">
-      <Card className="max-w-xl">
-        <CardContent className="p-6">
-          <h1 className="text-2xl font-semibold">CronCeption</h1>
-          <p className="mt-4">
-            {isLoading && "Loading..."}
-            {error && "Error"}
-            {data && `Backend: ${data.status}`}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/crontabs/:id/timeline" element={<Timeline />} />
+        <Route path="/crontabs/:id/heatmap" element={<Heatmap />} />
+        <Route path="/crontabs/:id/calendar" element={<Calendar />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
