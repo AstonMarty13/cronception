@@ -1,18 +1,19 @@
 import { type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, ChevronLeft, Clock, Grid3X3 } from "lucide-react";
+import { CalendarDays, ChevronLeft, Clock, Grid3X3, ScrollText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export type ViewKey = "timeline" | "heatmap" | "calendar";
+export type ViewKey = "timeline" | "heatmap" | "calendar" | "raw";
 
 const VIEWS: { key: ViewKey; label: string; Icon: typeof Clock }[] = [
   { key: "timeline", label: "Timeline", Icon: Clock },
   { key: "heatmap", label: "Heatmap", Icon: Grid3X3 },
   { key: "calendar", label: "Calendar", Icon: CalendarDays },
+  { key: "raw", label: "Raw", Icon: ScrollText },
 ];
 
 interface ViewLayoutProps {

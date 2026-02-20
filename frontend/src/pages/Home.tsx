@@ -5,7 +5,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { CalendarDays, Clock, Grid3X3, Trash2 } from "lucide-react";
+import { CalendarDays, Clock, Grid3X3, ScrollText, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -209,6 +209,12 @@ function CrontabCard({
             <Link to={`/crontabs/${crontab.id}/calendar`}>
               <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
               Calendar
+            </Link>
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link to={`/crontabs/${crontab.id}/raw`}>
+              <ScrollText className="h-3.5 w-3.5 mr-1.5" />
+              Raw
             </Link>
           </Button>
         </div>

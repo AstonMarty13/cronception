@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Eye, EyeOff } from "lucide-react";
 import ReactECharts from "echarts-for-react";
 
 import { ViewLayout } from "@/components/ViewLayout";
@@ -30,10 +31,7 @@ const HOUR_LABELS = Array.from({ length: 24 }, (_, i) =>
 // Data helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Build a dense 24×7 array from the sparse backend response.
- * Missing cells (no runs) are filled with count 0.
- */
+/** Build a dense 24×7 array from sparse cells; missing cells are 0. */
 function buildChartData(
   cells: HeatmapCell[]
 ): Array<[number, number, number]> {
@@ -119,7 +117,6 @@ function buildOption(
       max: Math.max(maxCount, 1),
       show: false,
       inRange: {
-        // Very light blue → strong blue
         color: ["#eff6ff", "#1d4ed8"],
       },
     },
@@ -190,32 +187,31 @@ function StatCard({ label, value, sub }: StatCardProps) {
 export default function Heatmap() {
   const { id } = useParams<{ id: string }>();
   const [days, setDays] = useState(30);
+  const [showNoisy, setShowNoisy] = useState(false);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["heatmap", id, days],
+    queryKey: ["heatmap", id, days, showNoisy],
     queryFn: () => {
       const now = new Date();
       return api.occurrences.heatmap(id!, {
         from_dt: now.toISOString(),
         to_dt: new Date(now.getTime() + days * 86_400_000).toISOString(),
+        hide_noisy: !showNoisy,
       });
     },
     enabled: !!id,
     staleTime: 60_000,
   });
 
-  const chartData = useMemo(
-    () => buildChartData(data?.data ?? []),
-    [data]
-  );
+  const noisyCount = data?.filtered_noisy_count ?? 0;
 
-  const chartOption = useMemo(
-    () => buildOption(chartData, data?.max_count ?? 0),
-    [chartData, data?.max_count]
-  );
+  const cells = useMemo(() => data?.data ?? [], [data?.data]);
+  const maxCount = data?.max_count ?? 0;
 
-  const stats = useMemo(() => computeStats(data?.data ?? []), [data]);
-  const hasData = (data?.data.length ?? 0) > 0;
+  const chartData = useMemo(() => buildChartData(cells), [cells]);
+  const chartOption = useMemo(() => buildOption(chartData, maxCount), [chartData, maxCount]);
+  const stats = useMemo(() => computeStats(cells), [cells]);
+  const hasData = cells.length > 0;
 
   return (
     <ViewLayout activeView="heatmap">
@@ -227,11 +223,39 @@ export default function Heatmap() {
             <p className="text-sm text-muted-foreground mt-0.5">
               {hasData
                 ? `${stats.total.toLocaleString()} runs over ${days} day${days > 1 ? "s" : ""}`
-                : `No runs in the last ${days} day${days > 1 ? "s" : ""}.`}
+                : `No runs in the next ${days} day${days > 1 ? "s" : ""}.`}
             </p>
           )}
         </div>
-        <RangeSelector value={days} onChange={setDays} />
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Noisy toggle */}
+          {!isLoading && !error && (showNoisy || noisyCount > 0) && (
+            <button
+              onClick={() => setShowNoisy((s) => !s)}
+              className={cn(
+                "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors",
+                showNoisy
+                  ? "border-border text-muted-foreground hover:text-foreground"
+                  : "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+              )}
+            >
+              {showNoisy ? (
+                <>
+                  <EyeOff className="h-3 w-3" />
+                  Hide frequent
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3 w-3" />
+                  {noisyCount} frequent hidden
+                </>
+              )}
+            </button>
+          )}
+
+          <RangeSelector value={days} onChange={setDays} />
+        </div>
       </div>
 
       {/* Loading */}

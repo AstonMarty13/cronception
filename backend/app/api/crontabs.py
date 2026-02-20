@@ -105,16 +105,18 @@ async def get_occurrences(
 ) -> OccurrencesResponse:
     row = await _get_or_404(id, db)
     jobs = parse_crontab(row["raw_text"]).jobs
-    from_dt, to_dt, items = occurrences_for_window(
+    from_dt, to_dt, items, filtered_noisy_count = occurrences_for_window(
         jobs,
         from_dt=payload.from_dt,
         to_dt=payload.to_dt,
         limit=payload.limit,
+        hide_noisy=payload.hide_noisy,
     )
     return OccurrencesResponse(
         from_dt=from_dt,
         to_dt=to_dt,
         occurrences=[OccurrenceItem(**item) for item in items],
+        filtered_noisy_count=filtered_noisy_count,
     )
 
 
@@ -130,16 +132,18 @@ async def get_timeline(
     """Sorted list of upcoming runs — same shape as /occurrences, distinct route for clarity."""
     row = await _get_or_404(id, db)
     jobs = parse_crontab(row["raw_text"]).jobs
-    from_dt, to_dt, items = occurrences_for_window(
+    from_dt, to_dt, items, filtered_noisy_count = occurrences_for_window(
         jobs,
         from_dt=payload.from_dt,
         to_dt=payload.to_dt,
         limit=payload.limit,
+        hide_noisy=payload.hide_noisy,
     )
     return OccurrencesResponse(
         from_dt=from_dt,
         to_dt=to_dt,
         occurrences=[OccurrenceItem(**item) for item in items],
+        filtered_noisy_count=filtered_noisy_count,
     )
 
 
@@ -149,14 +153,16 @@ async def get_heatmap(
 ) -> HeatmapResponse:
     row = await _get_or_404(id, db)
     jobs = parse_crontab(row["raw_text"]).jobs
-    from_dt, to_dt, cells, max_count = heatmap_for_window(
+    from_dt, to_dt, cells, max_count, filtered_noisy_count = heatmap_for_window(
         jobs,
         from_dt=payload.from_dt,
         to_dt=payload.to_dt,
+        hide_noisy=payload.hide_noisy,
     )
     return HeatmapResponse(
         from_dt=from_dt,
         to_dt=to_dt,
         data=[HeatmapCell(**cell) for cell in cells],
         max_count=max_count,
+        filtered_noisy_count=filtered_noisy_count,
     )

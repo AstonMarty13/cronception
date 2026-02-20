@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Eye, EyeOff } from "lucide-react";
 
 import { ViewLayout } from "@/components/ViewLayout";
 import { api, getErrorMessage } from "@/lib/api";
@@ -120,13 +121,24 @@ function DayGroup({ label, items }: DayGroupProps) {
                   </span>
                 </td>
 
-                {/* Command — truncates on overflow */}
+                {/* Command + optional description */}
                 <td
-                  className="px-4 py-2.5 font-mono text-xs text-muted-foreground max-w-0 w-full truncate"
-                  title={occ.command || undefined}
+                  className="px-4 py-2.5 max-w-0 w-full"
+                  title={
+                    occ.description
+                      ? `${occ.command}\n\n${occ.description}`
+                      : occ.command || undefined
+                  }
                 >
-                  {occ.command || (
-                    <span className="italic opacity-40">no command</span>
+                  <div className="font-mono text-xs text-muted-foreground truncate">
+                    {occ.command || (
+                      <span className="italic opacity-40">no command</span>
+                    )}
+                  </div>
+                  {occ.description && (
+                    <div className="text-xs text-muted-foreground/70 italic truncate mt-0.5">
+                      {occ.description}
+                    </div>
                   )}
                 </td>
 
@@ -156,27 +168,32 @@ function DayGroup({ label, items }: DayGroupProps) {
 export default function Timeline() {
   const { id } = useParams<{ id: string }>();
   const [days, setDays] = useState(30);
+  const [showNoisy, setShowNoisy] = useState(false);
 
+  // showNoisy is part of the query key so toggling triggers a fresh fetch
+  // with hide_noisy flipped — the backend applies the filter before the limit,
+  // ensuring the full requested window is covered for non-noisy jobs.
   const { data, isLoading, error } = useQuery({
-    queryKey: ["timeline", id, days],
+    queryKey: ["timeline", id, days, showNoisy],
     queryFn: () => {
       const now = new Date();
       return api.occurrences.timeline(id!, {
         from_dt: now.toISOString(),
         to_dt: new Date(now.getTime() + days * 86_400_000).toISOString(),
         limit: LIMIT,
+        hide_noisy: !showNoisy,
       });
     },
     enabled: !!id,
     staleTime: 60_000,
   });
 
-  const groups = useMemo(
-    () => groupByDay(data?.occurrences ?? []),
-    [data]
-  );
+  const occurrences = useMemo(() => data?.occurrences ?? [], [data?.occurrences]);
+  const noisyCount = data?.filtered_noisy_count ?? 0;
 
-  const count = data?.occurrences.length ?? 0;
+  const groups = useMemo(() => groupByDay(occurrences), [occurrences]);
+
+  const count = occurrences.length;
   const truncated = count >= LIMIT;
 
   return (
@@ -193,7 +210,35 @@ export default function Timeline() {
             </p>
           )}
         </div>
-        <RangeSelector value={days} onChange={setDays} />
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Noisy toggle — only shown when there are noisy schedules */}
+          {!isLoading && !error && (showNoisy || noisyCount > 0) && (
+            <button
+              onClick={() => setShowNoisy((s) => !s)}
+              className={cn(
+                "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors",
+                showNoisy
+                  ? "border-border text-muted-foreground hover:text-foreground"
+                  : "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+              )}
+            >
+              {showNoisy ? (
+                <>
+                  <EyeOff className="h-3 w-3" />
+                  Hide frequent
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3 w-3" />
+                  {noisyCount} frequent hidden
+                </>
+              )}
+            </button>
+          )}
+
+          <RangeSelector value={days} onChange={setDays} />
+        </div>
       </div>
 
       {/* Loading */}

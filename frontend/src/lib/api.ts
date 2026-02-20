@@ -49,13 +49,13 @@ export const api = {
   occurrences: {
     list: (
       id: string,
-      params: { from_dt?: string; to_dt?: string; limit?: number }
+      params: { from_dt?: string; to_dt?: string; limit?: number; hide_noisy?: boolean }
     ): Promise<OccurrencesResponse> =>
       http.post(`/crontabs/${id}/occurrences`, params).then((r) => r.data),
 
     timeline: (
       id: string,
-      params: { from_dt?: string; to_dt?: string; limit?: number }
+      params: { from_dt?: string; to_dt?: string; limit?: number; hide_noisy?: boolean }
     ): Promise<OccurrencesResponse> =>
       http
         .post(`/crontabs/${id}/aggregate/timeline`, params)
@@ -63,7 +63,7 @@ export const api = {
 
     heatmap: (
       id: string,
-      params: { from_dt?: string; to_dt?: string }
+      params: { from_dt?: string; to_dt?: string; hide_noisy?: boolean }
     ): Promise<HeatmapResponse> =>
       http
         .post(`/crontabs/${id}/aggregate/heatmap`, params)

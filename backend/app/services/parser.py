@@ -60,39 +60,51 @@ def parse_crontab(raw_text: str) -> CrontabParseResult:
     Parse a raw crontab string and return structured job data.
 
     Rules:
-    - Empty lines are skipped.
-    - Environment variable assignments (VAR=value) are skipped.
+    - Empty lines are skipped and reset the pending description buffer.
+    - Environment variable assignments (VAR=value) are skipped and reset the buffer.
     - Lines starting with '#' that don't look like a cron job are treated as
-      pure comments and skipped.
+      pure comments. If non-empty they are accumulated in a pending description
+      buffer that will be attached to the next job.
     - Lines starting with '#' that look like a cron job are parsed as
-      *disabled* jobs (enabled=False).
-    - Lines with an unrecognised format produce a warning and are skipped.
+      *disabled* jobs (enabled=False), consuming the pending description buffer.
+    - Lines with an unrecognised format produce a warning and reset the buffer.
     - Lines with a syntactically invalid schedule are kept (enabled=True) but
       carry a non-null *error* field and a warning.
     """
     jobs: list[ParsedJob] = []
     warnings: list[str] = []
+    # Accumulates consecutive pure-comment lines to use as the description of
+    # the next job.  Reset on empty lines, env vars, and unrecognised lines.
+    pending_description: list[str] = []
 
     for i, line in enumerate(raw_text.splitlines(), start=1):
         stripped = line.strip()
 
         if not stripped:
+            pending_description.clear()
             continue
 
         if _is_env_var(stripped):
+            pending_description.clear()
             continue
 
         if stripped.startswith("#"):
             inner = stripped.lstrip("#").strip()
             parsed = _try_parse_cron_line(inner)
             if parsed is None:
-                # Not enough fields — pure comment
+                # Not enough fields — pure comment; accumulate for description
+                if inner:
+                    pending_description.append(inner)
                 continue
             schedule, command = parsed
             # Only treat as a disabled job when the schedule is recognisably
-            # valid; otherwise it is just a prose comment (e.g. "# m h dom mon dow command").
+            # valid; otherwise it is just a prose comment.
             if schedule != "@reboot" and not croniter.is_valid(schedule):
+                if inner:
+                    pending_description.append(inner)
                 continue
+            description = "\n".join(pending_description) or None
+            pending_description.clear()
             jobs.append(
                 ParsedJob(
                     line_number=i,
@@ -101,6 +113,7 @@ def parse_crontab(raw_text: str) -> CrontabParseResult:
                     command=command,
                     enabled=False,
                     error=None,
+                    description=description,
                 )
             )
             continue
@@ -108,12 +121,15 @@ def parse_crontab(raw_text: str) -> CrontabParseResult:
         parsed = _try_parse_cron_line(stripped)
         if parsed is None:
             warnings.append(f"Line {i}: unrecognised format, skipped")
+            pending_description.clear()
             continue
 
         schedule, command = parsed
         error = _validate_schedule(schedule)
         if error:
             warnings.append(f"Line {i}: {error}")
+        description = "\n".join(pending_description) or None
+        pending_description.clear()
 
         jobs.append(
             ParsedJob(
@@ -123,6 +139,7 @@ def parse_crontab(raw_text: str) -> CrontabParseResult:
                 command=command,
                 enabled=True,
                 error=error,
+                description=description,
             )
         )
 

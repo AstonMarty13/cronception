@@ -19,6 +19,7 @@ class ParsedJob(BaseModel):
     command: str
     enabled: bool
     error: Optional[str] = None
+    description: Optional[str] = None
 
 
 class CrontabParseResult(BaseModel):
@@ -107,6 +108,7 @@ class OccurrenceRequest(BaseModel):
     from_dt: Optional[datetime] = None
     to_dt: Optional[datetime] = None
     limit: int = Field(default=500, ge=1, le=5000)
+    hide_noisy: bool = False
 
 
 class OccurrenceItem(BaseModel):
@@ -114,12 +116,14 @@ class OccurrenceItem(BaseModel):
     command: str
     enabled: bool
     at: datetime
+    description: Optional[str] = None
 
 
 class OccurrencesResponse(BaseModel):
     from_dt: datetime
     to_dt: datetime
     occurrences: list[OccurrenceItem]
+    filtered_noisy_count: int = 0
 
 
 class HeatmapCell(BaseModel):
@@ -131,6 +135,7 @@ class HeatmapCell(BaseModel):
 class HeatmapRequest(BaseModel):
     from_dt: Optional[datetime] = None
     to_dt: Optional[datetime] = None
+    hide_noisy: bool = False
 
 
 class HeatmapResponse(BaseModel):
@@ -138,3 +143,4 @@ class HeatmapResponse(BaseModel):
     to_dt: datetime
     data: list[HeatmapCell]
     max_count: int
+    filtered_noisy_count: int = 0

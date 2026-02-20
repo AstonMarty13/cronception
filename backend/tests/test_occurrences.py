@@ -38,33 +38,33 @@ def make_job(schedule: str, command: str = "/cmd", enabled: bool = True, error=N
 
 def test_every_minute_generates_60_occurrences_in_one_hour():
     jobs = [make_job("* * * * *")]
-    _, _, items = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
+    _, _, items, _ = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
     # 00:01 … 01:00 (first whole minute after 00:00:30 is 00:01, last ≤ 01:00:30 is 01:00)
     assert len(items) == 60
 
 
 def test_occurrences_are_sorted_ascending():
     jobs = [make_job("* * * * *")]
-    _, _, items = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
+    _, _, items, _ = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
     times = [item["at"] for item in items]
     assert times == sorted(times)
 
 
 def test_occurrences_respect_limit():
     jobs = [make_job("* * * * *")]
-    _, _, items = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=10)
+    _, _, items, _ = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=10)
     assert len(items) == 10
 
 
 def test_disabled_job_excluded_by_default():
     jobs = [make_job("* * * * *", enabled=False)]
-    _, _, items = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
+    _, _, items, _ = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
     assert items == []
 
 
 def test_disabled_job_included_when_requested():
     jobs = [make_job("* * * * *", enabled=False)]
-    _, _, items = occurrences_for_window(
+    _, _, items, _ = occurrences_for_window(
         jobs, WINDOW_FROM, WINDOW_TO, limit=1000, include_disabled=True
     )
     assert len(items) == 60  # same window as above
@@ -73,13 +73,13 @@ def test_disabled_job_included_when_requested():
 
 def test_job_with_error_excluded():
     jobs = [make_job("* * * * *", error="Invalid")]
-    _, _, items = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
+    _, _, items, _ = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
     assert items == []
 
 
 def test_reboot_job_excluded():
     jobs = [make_job("@reboot")]
-    _, _, items = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
+    _, _, items, _ = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
     assert items == []
 
 
@@ -91,7 +91,7 @@ def test_multiple_jobs_merged_and_sorted():
         make_job("0 * * * *", command="/hourly"),
         make_job("*/30 * * * *", command="/half-hourly"),
     ]
-    _, _, items = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
+    _, _, items, _ = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=1000)
     assert len(items) == 3
     times = [item["at"] for item in items]
     assert times == sorted(times)
@@ -100,7 +100,7 @@ def test_multiple_jobs_merged_and_sorted():
 def test_occurrence_fields():
     # Window [00:00:30, 01:00:30]: 0 * * * * fires once at 01:00
     jobs = [make_job("0 * * * *", command="/my-cmd")]
-    _, _, items = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=10)
+    _, _, items, _ = occurrences_for_window(jobs, WINDOW_FROM, WINDOW_TO, limit=10)
     assert len(items) == 1
     item = items[0]
     assert item["schedule"] == "0 * * * *"
@@ -111,12 +111,12 @@ def test_occurrence_fields():
 
 def test_default_window_is_30_days():
     jobs = [make_job("@daily /cmd")]
-    from_dt, to_dt, _ = occurrences_for_window(jobs)
+    from_dt, to_dt, _, _ = occurrences_for_window(jobs)
     assert (to_dt - from_dt).days == 30
 
 
 def test_no_jobs_returns_empty():
-    _, _, items = occurrences_for_window([], WINDOW_FROM, WINDOW_TO)
+    _, _, items, _ = occurrences_for_window([], WINDOW_FROM, WINDOW_TO)
     assert items == []
 
 
@@ -129,7 +129,7 @@ def test_heatmap_every_minute_one_hour():
     # Window [00:00:30, 01:00:30]: * * * * * fires at 00:01…01:00 = 60 times
     # 59 in hour=0, 1 in hour=1, all on day=0 (Monday)
     jobs = [make_job("* * * * *")]
-    _, _, cells, max_count = heatmap_for_window(jobs, WINDOW_FROM, WINDOW_TO)
+    _, _, cells, max_count, _ = heatmap_for_window(jobs, WINDOW_FROM, WINDOW_TO)
 
     assert max_count > 0
     total = sum(c["count"] for c in cells)
@@ -140,7 +140,7 @@ def test_heatmap_cells_have_correct_keys():
     jobs = [make_job("0 12 * * *")]  # noon every day
     from_dt = datetime(2024, 1, 1, tzinfo=UTC)
     to_dt = datetime(2024, 1, 8, tzinfo=UTC)
-    _, _, cells, _ = heatmap_for_window(jobs, from_dt, to_dt)
+    _, _, cells, _, _ = heatmap_for_window(jobs, from_dt, to_dt)
     for cell in cells:
         assert "hour" in cell
         assert "day" in cell
@@ -154,7 +154,7 @@ def test_heatmap_max_count():
     jobs = [make_job("* * * * *")]
     from_dt = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
     to_dt = datetime(2024, 1, 1, 2, 0, tzinfo=UTC)  # 2 hours
-    _, _, cells, max_count = heatmap_for_window(jobs, from_dt, to_dt)
+    _, _, cells, max_count, _ = heatmap_for_window(jobs, from_dt, to_dt)
     # Both hours are on the same day — all cells should have count <= max_count
     assert all(c["count"] <= max_count for c in cells)
     assert max_count == max(c["count"] for c in cells)
@@ -162,13 +162,23 @@ def test_heatmap_max_count():
 
 def test_heatmap_empty_when_no_eligible_jobs():
     jobs = [make_job("@reboot")]
-    _, _, cells, max_count = heatmap_for_window(jobs, WINDOW_FROM, WINDOW_TO)
+    _, _, cells, max_count, _ = heatmap_for_window(jobs, WINDOW_FROM, WINDOW_TO)
     assert cells == []
     assert max_count == 0
 
 
 def test_heatmap_disabled_excluded_by_default():
     jobs = [make_job("* * * * *", enabled=False)]
-    _, _, cells, max_count = heatmap_for_window(jobs, WINDOW_FROM, WINDOW_TO)
+    _, _, cells, max_count, _ = heatmap_for_window(jobs, WINDOW_FROM, WINDOW_TO)
     assert cells == []
     assert max_count == 0
+
+
+def test_heatmap_hide_noisy_filters_fast_schedules():
+    jobs = [make_job("* * * * *"), make_job("0 1 * * *")]
+    _, _, cells, _, filtered_noisy_count = heatmap_for_window(
+        jobs, WINDOW_FROM, WINDOW_TO, hide_noisy=True
+    )
+    assert filtered_noisy_count == 1
+    # daily 01:00 schedule remains: one run in this window
+    assert sum(c["count"] for c in cells) == 1
