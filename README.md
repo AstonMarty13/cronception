@@ -26,6 +26,17 @@ CronCeption helps you move from raw crontab text to operational visibility:
   - `Raw` editor (inline edit + save)
 - Hide noisy schedules (`> 5 runs/day`) for cleaner analysis.
 
+## Screenshots
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Home" width="48%">
+  <img src="docs/screenshots/timeline.png" alt="Timeline" width="48%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/heatmap.png" alt="Heatmap" width="32%">
+  <img src="docs/screenshots/calendar-month.png" alt="Calendar Month" width="32%">
+  <img src="docs/screenshots/calendar-week.png" alt="Calendar Week" width="32%">
+</p>
+
 ## Architecture
 
 ```text
